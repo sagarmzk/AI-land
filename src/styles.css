@@ -129,9 +129,8 @@ body.capture-mode::before {
   inset: 0;
   border-radius: inherit;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-  opacity: 0.55;
+  opacity: 0.5;
   pointer-events: none;
-  mix-blend-mode: overlay;
 }
 
 /* ---------- header ---------- */
@@ -1676,7 +1675,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   border-radius: inherit;
   background: rgba(0, 0, 0, 0.9);
   border: 1px dashed rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(10px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.22s var(--ease);
@@ -1703,6 +1701,11 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   border: 2px dashed rgba(255, 255, 255, 0.45);
   border-radius: 50%;
   animation: spin 3.2s linear infinite;
+  animation-play-state: paused;
+}
+
+.island.drop-active .drop-ring {
+  animation-play-state: running;
 }
 
 /* ---------- keyframes ---------- */
@@ -1762,6 +1765,26 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 
 .aura {
   animation-name: auraSpin;
+}
+
+/* ---------- idle power saving ---------- */
+
+.aura,
+.orb::before {
+  animation-play-state: paused;
+}
+
+.island.is-playing .aura,
+.island.expanded .aura,
+.island.is-playing .orb::before,
+.island.expanded .orb::before {
+  animation-play-state: running;
+}
+
+body.is-suspended *,
+body.is-suspended *::before,
+body.is-suspended *::after {
+  animation-play-state: paused !important;
 }
 
 @keyframes auraSpin {

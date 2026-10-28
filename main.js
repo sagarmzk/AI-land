@@ -45,10 +45,11 @@ let latestArt = null;
 let lastArtSource = '';
 let latestNet = null;
 let latestCalendar = null;
-let mediaProc = null;
-let mediaRestartTimer = null;
+let calendarAt = 0;
+let calendarBusy = false;
+let bridgeProc = null;
+let bridgeRestartTimer = null;
 let mediaCmdPath = null;
-let netProc = null;
 let netPrev = null;
 let prevCpuTimes = [];
 let hitboxTimer = null;
@@ -136,63 +137,67 @@ function findShelfFile(id) {
   return store.shelf.find((f) => f.id === id);
 }
 
-/* ---------- media bridge (SMTC) ---------- */
+/* ---------- system bridge (SMTC + network + battery) ---------- */
 
-function stopMediaBridge() {
-  if (mediaRestartTimer) {
-    clearTimeout(mediaRestartTimer);
-    mediaRestartTimer = null;
+function stopBridge() {
+  if (bridgeRestartTimer) {
+    clearTimeout(bridgeRestartTimer);
+    bridgeRestartTimer = null;
   }
-  if (mediaProc) {
+  if (bridgeProc) {
     try {
-      mediaProc.kill();
+      bridgeProc.kill();
     } catch {
       /* already gone */
     }
-    mediaProc = null;
+    bridgeProc = null;
   }
 }
 
-function startMediaBridge() {
-  stopMediaBridge();
+function startBridge() {
+  stopBridge();
   mediaCmdPath = path.join(os.tmpdir(), `ailand-cmd-${process.pid}.txt`);
   try {
     fs.unlinkSync(mediaCmdPath);
   } catch {
     /* no stale command */
   }
-  const script = path.join(ROOT, 'scripts', 'smtc.ps1');
+  const script = path.join(ROOT, 'scripts', 'bridge.ps1');
   if (!fs.existsSync(script)) return;
-  mediaProc = spawn(
+  bridgeProc = spawn(
     'powershell.exe',
     ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, '-CommandFile', mediaCmdPath],
     { windowsHide: true }
   );
-  mediaProc.stdout.setEncoding('utf8');
+  bridgeProc.stdout.setEncoding('utf8');
   let buffer = '';
-  mediaProc.stdout.on('data', (chunk) => {
+  bridgeProc.stdout.on('data', (chunk) => {
     buffer += chunk;
     let nl;
     while ((nl = buffer.indexOf('\n')) >= 0) {
       const line = buffer.slice(0, nl).trim().replace(/^\uFEFF/, '');
       buffer = buffer.slice(nl + 1);
       if (!line.startsWith('{')) continue;
+      let payload;
       try {
-        handleMediaState(JSON.parse(line));
+        payload = JSON.parse(line);
       } catch {
-        /* partial json */
+        continue;
       }
+      if (payload.k === 'sys') handleSysState(payload);
+      else handleMediaState(payload);
     }
   });
-  mediaProc.stderr.on('data', () => {});
-  mediaProc.on('error', () => {});
-  mediaProc.on('exit', () => {
-    mediaProc = null;
-    if (!app.isQuitting) mediaRestartTimer = setTimeout(startMediaBridge, 8000);
+  bridgeProc.stderr.on('data', () => {});
+  bridgeProc.on('error', () => {});
+  bridgeProc.on('exit', () => {
+    bridgeProc = null;
+    if (!app.isQuitting) bridgeRestartTimer = setTimeout(startBridge, 8000);
   });
 }
 
 function handleMediaState(state) {
+  delete state.k;
   latestMedia = state;
   if (state.active && state.art) {
     if (lastArtSource !== state.art) {
@@ -214,57 +219,27 @@ function handleMediaState(state) {
   send('media:state', state);
 }
 
+function handleSysState(payload) {
+  const now = Date.now();
+  if (netPrev && now > netPrev.t) {
+    const dt = (now - netPrev.t) / 1000;
+    payload.rxBps = Math.max(0, (payload.rx - netPrev.rx) / dt);
+    payload.txBps = Math.max(0, (payload.tx - netPrev.tx) / dt);
+  } else {
+    payload.rxBps = 0;
+    payload.txBps = 0;
+  }
+  netPrev = { rx: payload.rx, tx: payload.tx, t: now };
+  latestNet = payload;
+}
+
 function mediaControl(action) {
-  if (!mediaProc || !mediaCmdPath) return;
+  if (!bridgeProc || !mediaCmdPath) return;
   try {
     fs.writeFileSync(mediaCmdPath, String(action), 'utf8');
   } catch {
     /* bridge not ready */
   }
-}
-
-/* ---------- network / battery / disk bridge ---------- */
-
-function startNetBridge() {
-  const script = path.join(ROOT, 'scripts', 'net.ps1');
-  if (!fs.existsSync(script)) return;
-  netProc = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script], {
-    windowsHide: true
-  });
-  netProc.stdout.setEncoding('utf8');
-  let buffer = '';
-  netProc.stdout.on('data', (chunk) => {
-    buffer += chunk;
-    let nl;
-    while ((nl = buffer.indexOf('\n')) >= 0) {
-      const line = buffer.slice(0, nl).trim().replace(/^\uFEFF/, '');
-      buffer = buffer.slice(nl + 1);
-      if (!line.startsWith('{')) continue;
-      let payload;
-      try {
-        payload = JSON.parse(line);
-      } catch {
-        continue;
-      }
-      const now = Date.now();
-      if (netPrev && now > netPrev.t) {
-        const dt = (now - netPrev.t) / 1000;
-        payload.rxBps = Math.max(0, (payload.rx - netPrev.rx) / dt);
-        payload.txBps = Math.max(0, (payload.tx - netPrev.tx) / dt);
-      } else {
-        payload.rxBps = 0;
-        payload.txBps = 0;
-      }
-      netPrev = { rx: payload.rx, tx: payload.tx, t: now };
-      latestNet = payload;
-    }
-  });
-  netProc.stderr.on('data', () => {});
-  netProc.on('error', () => {});
-  netProc.on('exit', () => {
-    netProc = null;
-    if (!app.isQuitting) setTimeout(startNetBridge, 8000);
-  });
 }
 
 /* ---------- system stats ---------- */
@@ -288,6 +263,7 @@ function sampleCpu() {
 }
 
 function pushStats() {
+  if (!win || win.isDestroyed() || !win.isVisible()) return;
   const totalMem = os.totalmem();
   const freeMem = os.freemem();
   const net = latestNet || {};
@@ -310,8 +286,14 @@ function pushStats() {
 /* ---------- calendar ---------- */
 
 function refreshCalendar() {
+  if (calendarBusy) return;
+  if (Date.now() - calendarAt < 5 * 60 * 1000) {
+    if (latestCalendar) send('calendar:state', latestCalendar);
+    return;
+  }
   const script = path.join(ROOT, 'scripts', 'calendar.ps1');
   if (!fs.existsSync(script)) return;
+  calendarBusy = true;
   const proc = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script], {
     windowsHide: true
   });
@@ -332,6 +314,8 @@ function refreshCalendar() {
   });
   proc.on('close', () => {
     clearTimeout(killer);
+    calendarBusy = false;
+    calendarAt = Date.now();
     const lines = out
       .split(/\r?\n/)
       .map((l) => l.trim())
@@ -381,7 +365,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      spellcheck: false
+      spellcheck: false,
+      backgroundThrottling: true
     }
   });
 
@@ -422,7 +407,7 @@ function watchCursor() {
       cursorInside = inside;
       win.setIgnoreMouseEvents(!inside, { forward: true });
     }
-  }, 40);
+  }, 50);
 }
 
 function showUpdatePanel() {
@@ -623,7 +608,7 @@ function registerIpc() {
 
   ipcMain.on('calendar:request', () => {
     if (latestCalendar) send('calendar:state', latestCalendar);
-    else refreshCalendar();
+    refreshCalendar();
   });
 
   ipcMain.handle('update:get', () => {
@@ -696,11 +681,8 @@ app.whenReady().then(() => {
     /* tray optional */
   }
   watchCursor();
-  startMediaBridge();
-  startNetBridge();
-  statsTimer = setInterval(pushStats, 2000);
-  setTimeout(refreshCalendar, 3500);
-  setInterval(refreshCalendar, 5 * 60 * 1000);
+  startBridge();
+  statsTimer = setInterval(pushStats, 3000);
   globalShortcut.register('Control+Alt+Space', () => send('ui:toggle'));
   globalShortcut.register('Control+Alt+I', () => {
     if (!win) return;
@@ -715,14 +697,7 @@ app.on('before-quit', () => {
   if (hitboxTimer) clearInterval(hitboxTimer);
   if (statsTimer) clearInterval(statsTimer);
   if (updater) updater.dispose();
-  stopMediaBridge();
-  if (netProc) {
-    try {
-      netProc.kill();
-    } catch {
-      /* ignore */
-    }
-  }
+  stopBridge();
 });
 
 app.on('will-quit', () => {

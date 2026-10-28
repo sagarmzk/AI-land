@@ -54,18 +54,31 @@ let demoFiles = null;
 let collapseTimer = null;
 let hitboxRaf = null;
 let hitboxUntil = 0;
+let lastHitboxSent = null;
+let lastMediaKey = '';
 
 /* ---------------- window / hitbox ---------------- */
 
 function syncHitbox() {
   if (!api.setHitbox) return;
   const rect = island.getBoundingClientRect();
-  api.setHitbox({
+  const next = {
     x: Math.round(window.screenX + rect.left - 10),
     y: Math.round(window.screenY + rect.top - 6),
     w: Math.round(rect.width + 20),
     h: Math.round(rect.height + 12)
-  });
+  };
+  if (
+    lastHitboxSent &&
+    next.x === lastHitboxSent.x &&
+    next.y === lastHitboxSent.y &&
+    next.w === lastHitboxSent.w &&
+    next.h === lastHitboxSent.h
+  ) {
+    return;
+  }
+  lastHitboxSent = next;
+  api.setHitbox(next);
 }
 
 function hitboxLoop() {
@@ -194,6 +207,8 @@ function setView(view) {
     section.classList.toggle('is-active', section.dataset.view === view);
   });
   island.dataset.view = view;
+  if (view === 'timer' && api.requestCalendar) api.requestCalendar();
+  if (view === 'system' && state.stats) renderStats();
 }
 
 /* ---------------- media ---------------- */
@@ -232,6 +247,13 @@ function applyMedia(media) {
   state.baseAt = performance.now();
   const active = !!media.active;
   const playing = active && media.status === 'playing';
+
+  const key = [active, media.title, media.artist, media.album, media.app, media.status].join('|');
+  if (key === lastMediaKey) {
+    if (state.expanded && state.view === 'player') updateProgress();
+    return;
+  }
+  lastMediaKey = key;
 
   island.classList.toggle('is-playing', playing);
   island.classList.toggle('has-media', active);
@@ -793,13 +815,11 @@ function renderSpark() {
   spark.setAttribute('points', points.join(' '));
 }
 
-function applyStats(stats) {
+function renderStats() {
+  const stats = state.stats;
   if (!stats) return;
-  state.stats = stats;
 
   const cpu = clamp(Number(stats.cpu) || 0, 0, 100);
-  state.cpuHistory.push(cpu);
-  if (state.cpuHistory.length > 40) state.cpuHistory.shift();
   $('#cpuValue').textContent = `${Math.round(cpu)}%`;
   renderSpark();
 
@@ -833,6 +853,18 @@ function applyStats(stats) {
     $('#batteryFill').style.width = '0%';
     $('#batteryText').textContent = 'Питание от сети · батареи нет';
   }
+}
+
+function applyStats(stats) {
+  if (!stats) return;
+  state.stats = stats;
+
+  const cpu = clamp(Number(stats.cpu) || 0, 0, 100);
+  state.cpuHistory.push(cpu);
+  if (state.cpuHistory.length > 40) state.cpuHistory.shift();
+
+  if (!state.expanded || state.view !== 'system') return;
+  renderStats();
 }
 
 /* ---------------- shelf ---------------- */
@@ -1223,9 +1255,14 @@ function init() {
   tickClock();
   setInterval(tickClock, 1000);
   setInterval(() => {
+    if (!state.expanded || state.view !== 'player') return;
     if (state.media.active && state.media.status === 'playing') updateProgress();
-  }, 250);
-  setInterval(timerTick, 250);
+  }, 500);
+  setInterval(timerTick, 500);
+
+  document.addEventListener('visibilitychange', () => {
+    document.body.classList.toggle('is-suspended', document.hidden);
+  });
 
   bindEvents();
   renderShelf([]);

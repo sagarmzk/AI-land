@@ -17,15 +17,43 @@ function Await($op, $resultType) {
     $netTask.Result
 }
 
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+public static class AilandNative
+{
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SYSTEM_POWER_STATUS
+    {
+        public byte ACLineStatus;
+        public byte BatteryFlag;
+        public byte BatteryLifePercent;
+        public byte Reserved1;
+        public int BatteryLifeTime;
+        public int BatteryFullLifeTime;
+    }
+
+    [DllImport("kernel32.dll")]
+    public static extern bool GetSystemPowerStatus(out SYSTEM_POWER_STATUS status);
+
+    [DllImport("psapi.dll")]
+    public static extern bool EmptyWorkingSet(IntPtr process);
+}
+'@
+
 [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime] | Out-Null
 [Windows.Storage.Streams.DataReader, Windows.Storage.Streams, ContentType = WindowsRuntime] | Out-Null
 
-$manager = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
+$script:manager = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
+$script:lastArtKey = ''
+$script:lastArt = ''
+$script:mediaActive = $false
 
 function Select-Session {
     try {
-        $current = $manager.GetCurrentSession()
-        $sessions = @($manager.GetSessions())
+        $current = $script:manager.GetCurrentSession()
+        $sessions = @($script:manager.GetSessions())
         if ($sessions.Count -eq 0) { return $null }
         $playing = @($sessions | Where-Object {
             try { $_.GetPlaybackInfo().PlaybackStatus.ToString() -eq 'Playing' } catch { $false }
@@ -106,11 +134,12 @@ function Invoke-PlayerCommand($text) {
     }
 }
 
-function Emit-State {
+function Build-MediaPayload {
     try {
         $session = Select-Session
         if ($null -eq $session) {
-            return (@{ active = $false } | ConvertTo-Json -Compress)
+            $script:mediaActive = $false
+            return [ordered]@{ k = 'media'; active = $false } | ConvertTo-Json -Compress
         }
         $props = Await ($session.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
         $info = $session.GetPlaybackInfo()
@@ -123,7 +152,6 @@ function Emit-State {
         $status = 'paused'
         switch ($info.PlaybackStatus.ToString()) {
             'Playing' { $status = 'playing' }
-            'Paused' { $status = 'paused' }
             'Stopped' { $status = 'stopped' }
             'Changing' { $status = 'playing' }
         }
@@ -135,7 +163,9 @@ function Emit-State {
         } catch { }
         if ($position -lt 0) { $position = 0 }
         if ($duration -lt 0) { $duration = 0 }
-        return (@{
+        $script:mediaActive = $true
+        return [ordered]@{
+            k = 'media'
             active = $true
             title = $props.Title
             artist = $props.Artist
@@ -145,15 +175,64 @@ function Emit-State {
             position = [math]::Round($position, 2)
             duration = [math]::Round($duration, 2)
             art = $script:lastArt
-        } | ConvertTo-Json -Compress)
+        } | ConvertTo-Json -Compress
     } catch {
-        return (@{ active = $false; error = $_.Exception.Message } | ConvertTo-Json -Compress)
+        $script:mediaActive = $false
+        return [ordered]@{ k = 'media'; active = $false; error = $_.Exception.Message } | ConvertTo-Json -Compress
     }
 }
 
-$script:lastArtKey = ''
-$script:lastArt = ''
-$lastPayload = ''
+function Get-NetTotals {
+    $rx = [double]0
+    $tx = [double]0
+    try {
+        foreach ($nic in [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces()) {
+            if ($nic.OperationalStatus -ne [System.Net.NetworkInformation.OperationalStatus]::Up) { continue }
+            if ($nic.NetworkInterfaceType -eq [System.Net.NetworkInformation.NetworkInterfaceType]::Loopback) { continue }
+            try {
+                $stats = $nic.GetIPv4Statistics()
+                $rx += $stats.BytesReceived
+                $tx += $stats.BytesSent
+            } catch { }
+        }
+    } catch { }
+    return @($rx, $tx)
+}
+
+function Get-PowerState {
+    try {
+        $status = [AilandNative+SYSTEM_POWER_STATUS]::new()
+        if ([AilandNative]::GetSystemPowerStatus([ref]$status)) {
+            $percent = [int]$status.BatteryLifePercent
+            if ($percent -gt 100) { $percent = -1 }
+            return @{
+                battery = $percent
+                charging = ($status.ACLineStatus -eq 1)
+                hasBattery = (($status.BatteryFlag -ne 128) -and ($percent -ge 0))
+            }
+        }
+    } catch { }
+    return @{ battery = -1; charging = $false; hasBattery = $false }
+}
+
+function Get-DiskInfo {
+    try {
+        $drive = [System.IO.DriveInfo]::new('C')
+        return @([double]$drive.AvailableFreeSpace, [double]$drive.TotalSize)
+    } catch {
+        return @([double]0, [double]0)
+    }
+}
+
+$lastMedia = ''
+$lastSys = ''
+$sinceMedia = 999
+$sinceNet = 999
+$sinceSlow = 0
+$sinceTrim = 0
+$mediaGap = 5
+$netGap = 5
+$slowGap = 25
 
 while ($true) {
     if (Test-Path -LiteralPath $CommandFile) {
@@ -162,18 +241,62 @@ while ($true) {
             Remove-Item -LiteralPath $CommandFile -Force -ErrorAction SilentlyContinue
             if ($command) {
                 Invoke-PlayerCommand ($command.Trim())
-                $lastPayload = ''
+                $lastMedia = ''
+                $sinceMedia = 999
             }
         } catch {
             # malformed command, ignore
         }
     }
 
-    $payload = Emit-State
-    if ($payload -ne $lastPayload) {
-        [Console]::Out.WriteLine($payload)
-        [Console]::Out.Flush()
-        $lastPayload = $payload
+    if ($sinceMedia -ge $mediaGap) {
+        $sinceMedia = 0
+        $payload = Build-MediaPayload
+        if ($payload -ne $lastMedia) {
+            [Console]::Out.WriteLine($payload)
+            [Console]::Out.Flush()
+            $lastMedia = $payload
+        }
+        if ($script:mediaActive) { $mediaGap = 2 } else { $mediaGap = 5 }
     }
-    Start-Sleep -Milliseconds 700
+
+    if ($sinceNet -ge $netGap) {
+        $sinceNet = 0
+        $totals = Get-NetTotals
+        $power = Get-PowerState
+        $disk = Get-DiskInfo
+        $sys = [ordered]@{
+            k = 'sys'
+            rx = $totals[0]
+            tx = $totals[1]
+            diskFree = $disk[0]
+            diskTotal = $disk[1]
+            battery = $power.battery
+            charging = $power.charging
+            hasBattery = $power.hasBattery
+        } | ConvertTo-Json -Compress
+        if ($sys -ne $lastSys) {
+            [Console]::Out.WriteLine($sys)
+            [Console]::Out.Flush()
+            $lastSys = $sys
+        }
+    }
+
+    if ($sinceSlow -ge $slowGap) {
+        $sinceSlow = 0
+        [System.GC]::Collect()
+    }
+
+    if ($sinceTrim -ge 150) {
+        $sinceTrim = 0
+        try {
+            [AilandNative]::EmptyWorkingSet([System.Diagnostics.Process]::GetCurrentProcess().Handle) | Out-Null
+        } catch { }
+    }
+
+    $sinceMedia++
+    $sinceNet++
+    $sinceSlow++
+    $sinceTrim++
+    Start-Sleep -Milliseconds 400
 }
