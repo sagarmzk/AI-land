@@ -1,8 +1,8 @@
 {
   "name": "ailand",
   "productName": "AIland",
-  "version": "0.2.9",
-  "description": "AIland — плавающий остров-утилита для Windows: плеер, полка файлов, таймер и монитор системы.",
+  "version": "0.3.0",
+  "description": "AIland — плавающий остров-утилита для Windows: плеер, задачи, полка файлов, таймер и монитор системы.",
   "main": "main.js",
   "author": "AIland",
   "license": "MIT",

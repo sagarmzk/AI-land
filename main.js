@@ -56,12 +56,23 @@ let hitboxTimer = null;
 let statsTimer = null;
 
 const STORE_PATH = path.join(app.getPath('userData'), 'store.json');
-let store = { shelf: [], timer: null, meeting: null, update: { lastCheckAt: 0 } };
+let store = { shelf: [], tasks: [], timer: null, meeting: null, update: { lastCheckAt: 0 } };
 
 function loadStore() {
   try {
     const raw = JSON.parse(fs.readFileSync(STORE_PATH, 'utf8'));
     if (Array.isArray(raw.shelf)) store.shelf = raw.shelf.filter((f) => f && typeof f.path === 'string');
+    if (Array.isArray(raw.tasks)) {
+      store.tasks = raw.tasks
+        .filter((task) => task && typeof task.text === 'string' && task.text.trim())
+        .slice(0, 60)
+        .map((task) => ({
+          id: typeof task.id === 'string' ? task.id : randomUUID(),
+          text: task.text.trim().slice(0, 120),
+          done: !!task.done,
+          createdAt: Number(task.createdAt) || Date.now()
+        }));
+    }
     if (raw.timer && typeof raw.timer === 'object') store.timer = raw.timer;
     if (raw.meeting && typeof raw.meeting === 'object') store.meeting = raw.meeting;
     if (raw.update && typeof raw.update === 'object') {
@@ -135,6 +146,22 @@ function addFiles(paths) {
 
 function findShelfFile(id) {
   return store.shelf.find((f) => f.id === id);
+}
+
+/* ---------- tasks ---------- */
+
+function broadcastTasks() {
+  send('tasks:update', store.tasks);
+}
+
+function addTask(text) {
+  const value = String(text || '').trim().slice(0, 120);
+  if (!value) return store.tasks;
+  store.tasks.unshift({ id: randomUUID(), text: value, done: false, createdAt: Date.now() });
+  if (store.tasks.length > 60) store.tasks.length = 60;
+  persist();
+  broadcastTasks();
+  return store.tasks;
 }
 
 /* ---------- system bridge (SMTC + network + battery) ---------- */
@@ -514,6 +541,7 @@ function registerIpc() {
     if (latestArt) send('media:art', latestArt);
     if (latestCalendar) send('calendar:state', latestCalendar);
     send('shelf:update', shelfPayload());
+    send('tasks:update', store.tasks);
     if (updater) send('update:state', updater.getState());
     pushStats();
   });
@@ -524,6 +552,30 @@ function registerIpc() {
 
   ipcMain.handle('shelf:list', () => shelfPayload());
   ipcMain.handle('shelf:add', (_event, paths) => addFiles(Array.isArray(paths) ? paths : []));
+
+  ipcMain.handle('tasks:list', () => store.tasks);
+  ipcMain.handle('tasks:add', (_event, text) => addTask(text));
+  ipcMain.handle('tasks:toggle', (_event, id) => {
+    const task = store.tasks.find((t) => t.id === id);
+    if (task) {
+      task.done = !task.done;
+      persist();
+      broadcastTasks();
+    }
+    return store.tasks;
+  });
+  ipcMain.handle('tasks:remove', (_event, id) => {
+    store.tasks = store.tasks.filter((t) => t.id !== id);
+    persist();
+    broadcastTasks();
+    return store.tasks;
+  });
+  ipcMain.handle('tasks:clearDone', () => {
+    store.tasks = store.tasks.filter((t) => !t.done);
+    persist();
+    broadcastTasks();
+    return store.tasks;
+  });
 
   ipcMain.handle('shelf:pick', async () => {
     if (!win) return shelfPayload();
@@ -641,7 +693,7 @@ async function runCapture() {
   const outDir = path.join(ROOT, 'screenshots');
   fs.mkdirSync(outDir, { recursive: true });
   await wait(1600);
-  const states = ['idle', 'player', 'shelf', 'timer', 'system', 'meeting', 'update'];
+  const states = ['idle', 'player', 'tasks', 'shelf', 'timer', 'system', 'meeting', 'update'];
   for (const name of states) {
     await win.webContents.executeJavaScript(
       `window.__aiCapture && window.__aiCapture(${JSON.stringify(name)})`

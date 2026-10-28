@@ -41,6 +41,10 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
               <span>Плеер</span>
             </button>
+            <button class="tab" data-tab="tasks" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4" /><path d="m8 12 3 3 5-6" /></svg>
+              <span>Задачи</span>
+            </button>
             <button class="tab" data-tab="shelf" role="tab" aria-selected="false">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z" /><path d="m3 7.5 9 4.5 9-4.5" /><path d="M12 12v9" /></svg>
               <span>Полка</span>
@@ -91,6 +95,27 @@
                 </button>
               </div>
               <div class="empty-note" id="playerNote">Работает с любым плеером Windows: Spotify, Chrome, Яндекс Музыка</div>
+            </section>
+
+            <section class="view view-tasks" data-view="tasks" role="tabpanel">
+              <div class="task-progress">
+                <div class="task-progress-head">
+                  <span class="view-title">Задачи</span>
+                  <span class="task-count" id="taskCount">пусто</span>
+                  <button class="text-btn" id="tasksClearBtn" type="button" title="Убрать выполненные задачи">Очистить</button>
+                </div>
+                <div class="task-progress-row">
+                  <span class="task-pct" id="taskPct">0%</span>
+                  <div class="task-bar"><i id="taskFill"></i></div>
+                </div>
+              </div>
+              <div class="task-list" id="taskList"></div>
+              <form class="task-form" id="taskForm" autocomplete="off">
+                <input class="field task-field" id="taskInput" type="text" maxlength="120" placeholder="Новая задача" />
+                <button class="task-submit" id="taskAdd" type="submit" aria-label="Добавить задачу">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                </button>
+              </form>
             </section>
 
             <section class="view view-shelf" data-view="shelf" role="tabpanel">

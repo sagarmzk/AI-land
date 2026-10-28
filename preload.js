@@ -36,6 +36,13 @@ contextBridge.exposeInMainWorld('ai', {
   shelfReveal: (id) => ipcRenderer.send('shelf:reveal', id),
   shelfDrag: (id) => ipcRenderer.send('shelf:drag', id),
 
+  onTasks: (callback) => on('tasks:update', callback),
+  tasksList: () => ipcRenderer.invoke('tasks:list'),
+  tasksAdd: (text) => ipcRenderer.invoke('tasks:add', text),
+  tasksToggle: (id) => ipcRenderer.invoke('tasks:toggle', id),
+  tasksRemove: (id) => ipcRenderer.invoke('tasks:remove', id),
+  tasksClearDone: () => ipcRenderer.invoke('tasks:clearDone'),
+
   onStats: (callback) => on('system:stats', callback),
   onCalendar: (callback) => on('calendar:state', callback),
   requestCalendar: () => ipcRenderer.send('calendar:request'),

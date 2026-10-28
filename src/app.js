@@ -12,7 +12,7 @@ const coverImg = $('#coverImg');
 
 const TIMER_CIRC = 2 * Math.PI * 52;
 const GIB = 1024 ** 3;
-const VIEWS = ['player', 'shelf', 'timer', 'system'];
+const VIEWS = ['player', 'tasks', 'shelf', 'timer', 'system'];
 
 const state = {
   expanded: false,
@@ -25,6 +25,7 @@ const state = {
   media: { active: false },
   baseAt: performance.now(),
   shelf: [],
+  tasks: [],
   stats: null,
   cpuHistory: [],
   calendar: null,
@@ -51,6 +52,7 @@ const state = {
 };
 
 let demoFiles = null;
+let demoTasks = null;
 let collapseTimer = null;
 let hitboxRaf = null;
 let hitboxUntil = 0;
@@ -103,6 +105,8 @@ function expand() {
 
 function collapse(force = false) {
   if (state.editing || state.updateOpen) return;
+  const focused = document.activeElement;
+  if (!force && focused && focused.tagName === 'INPUT' && island.contains(focused)) return;
   if (!state.expanded) return;
   state.expanded = false;
   island.classList.remove('expanded', 'drop-active');
@@ -1005,6 +1009,119 @@ function handleDrop(event) {
     .catch(() => {});
 }
 
+/* ---------------- tasks ---------------- */
+
+function renderTasks(tasks) {
+  const list = Array.isArray(tasks) ? tasks : [];
+  state.tasks = list;
+  const total = list.length;
+  const done = list.filter((task) => task.done).length;
+  const percent = total ? Math.round((done / total) * 100) : 0;
+
+  $('#taskPct').textContent = `${percent}%`;
+  $('#taskCount').textContent = total ? `${done} из ${total}` : 'пусто';
+  $('#taskFill').style.width = `${percent}%`;
+  $('#tasksClearBtn').disabled = done === 0;
+
+  const container = $('#taskList');
+  container.innerHTML = '';
+
+  if (total === 0) {
+    const empty = document.createElement('button');
+    empty.type = 'button';
+    empty.className = 'task-empty';
+    empty.innerHTML = `
+      <span>Задач пока нет</span>
+      <small>Добавьте первую — шкала покажет прогресс</small>`;
+    empty.addEventListener('click', () => $('#taskInput').focus());
+    container.appendChild(empty);
+    return;
+  }
+
+  for (const task of list) {
+    const row = document.createElement('div');
+    row.className = `task-item${task.done ? ' is-done' : ''}`;
+
+    const check = document.createElement('button');
+    check.type = 'button';
+    check.className = 'task-check';
+    check.setAttribute('aria-label', task.done ? 'Снять отметку' : 'Выполнено');
+    check.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>';
+    check.addEventListener('click', () => toggleTask(task.id));
+
+    const text = document.createElement('div');
+    text.className = 'task-text';
+    text.textContent = task.text;
+    text.title = task.text;
+    text.addEventListener('click', () => toggleTask(task.id));
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'task-x';
+    remove.title = 'Удалить задачу';
+    remove.textContent = '×';
+    remove.addEventListener('click', () => removeTask(task.id));
+
+    row.append(check, text, remove);
+    container.appendChild(row);
+  }
+}
+
+function submitTask() {
+  const input = $('#taskInput');
+  const value = input.value.trim().slice(0, 120);
+  if (!value) {
+    input.focus();
+    return;
+  }
+  input.value = '';
+  if (demoTasks) {
+    demoTasks.unshift({ id: `t${Date.now()}`, text: value, done: false });
+    renderTasks(demoTasks);
+    return;
+  }
+  if (!api.tasksAdd) return;
+  api
+    .tasksAdd(value)
+    .then(renderTasks)
+    .catch(() => {});
+}
+
+function toggleTask(id) {
+  if (demoTasks) {
+    const task = demoTasks.find((item) => item.id === id);
+    if (task) task.done = !task.done;
+    renderTasks(demoTasks);
+    return;
+  }
+  if (!api.tasksToggle) return;
+  api.tasksToggle(id).then(renderTasks).catch(() => {});
+}
+
+function removeTask(id) {
+  if (demoTasks) {
+    demoTasks = demoTasks.filter((task) => task.id !== id);
+    renderTasks(demoTasks);
+    return;
+  }
+  if (!api.tasksRemove) return;
+  api.tasksRemove(id).then(renderTasks).catch(() => {});
+}
+
+function clearDoneTasks() {
+  if (demoTasks) {
+    demoTasks = demoTasks.filter((task) => !task.done);
+    renderTasks(demoTasks);
+    return;
+  }
+  if (!api.tasksClearDone) return;
+  api
+    .tasksClearDone()
+    .then(renderTasks)
+    .catch(() => {});
+}
+
 /* ---------------- events ---------------- */
 
 function bindEvents() {
@@ -1080,6 +1197,12 @@ function bindEvents() {
   $('#timerReset').addEventListener('click', resetTimer);
 
   $('#shelfClearBtn').addEventListener('click', clearShelf);
+
+  $('#taskForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    submitTask();
+  });
+  $('#tasksClearBtn').addEventListener('click', clearDoneTasks);
 
   const openMeeting = () => openMeetingEditor();
   $('#meeting').addEventListener('click', openMeeting);
@@ -1187,6 +1310,16 @@ function seedTimer() {
   });
 }
 
+function seedTasks() {
+  demoTasks = [
+    { id: 'd1', text: 'Собрать релиз 0.3.0', done: true },
+    { id: 'd2', text: 'Проверить обновление на чистой установке', done: true },
+    { id: 'd3', text: 'Отполировать шкалу прогресса', done: false },
+    { id: 'd4', text: 'Обновить README и скриншоты', done: false }
+  ];
+  renderTasks(demoTasks);
+}
+
 function seedSystem() {
   const seed = [18, 22, 19, 27, 31, 26, 34, 42, 38, 33, 45, 52, 47, 41, 36, 44, 58, 54, 49, 43];
   state.cpuHistory = seed.slice();
@@ -1218,6 +1351,9 @@ window.__aiCapture = (name) => {
   if (name === 'player') {
     setView('player');
     seedMedia();
+  } else if (name === 'tasks') {
+    setView('tasks');
+    seedTasks();
   } else if (name === 'shelf') {
     setView('shelf');
     seedShelf();
@@ -1266,6 +1402,7 @@ function init() {
 
   bindEvents();
   renderShelf([]);
+  renderTasks([]);
   renderCalendar(null);
   updatePlayIcon();
   updateProgress();
@@ -1275,6 +1412,7 @@ function init() {
   if (api.onArt) api.onArt(applyArt);
   if (api.onStats) api.onStats(applyStats);
   if (api.onShelf) api.onShelf(renderShelf);
+  if (api.onTasks) api.onTasks(renderTasks);
   if (api.onCalendar) api.onCalendar(renderCalendar);
   if (api.onUpdate) api.onUpdate(applyUpdate);
   if (api.onUpdateShow) api.onUpdateShow(openUpdatePanel);
@@ -1300,6 +1438,14 @@ function init() {
     api.shelfList()
       .then((files) => {
         if (!demoFiles) renderShelf(files);
+      })
+      .catch(() => {});
+  }
+
+  if (api.tasksList) {
+    api.tasksList()
+      .then((tasks) => {
+        if (!demoTasks) renderTasks(tasks);
       })
       .catch(() => {});
   }
