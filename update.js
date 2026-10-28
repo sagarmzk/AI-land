@@ -463,6 +463,10 @@ module.exports = function createUpdater(options) {
     }
   }
 
+  function psPath(value) {
+    return String(value).replace(/'/g, "''");
+  }
+
   function install() {
     if (state.status !== 'ready' || !currentFile || !fs.existsSync(currentFile)) return;
     patch({ status: 'installing', progress: 100, error: null });
@@ -472,46 +476,23 @@ module.exports = function createUpdater(options) {
       'AIland'
     );
     const helper = [
-      "const { spawn } = require('node:child_process');",
-      "const fs = require('node:fs');",
-      "const path = require('node:path');",
-      'const setup = process.env.AILAND_SETUP;',
-      'const dir = process.env.AILAND_INSTALL_DIR;',
-      'const version = process.env.AILAND_VERSION;',
-      'const env = { ...process.env };',
-      'delete env.ELECTRON_RUN_AS_NODE;',
-      "const child = spawn(setup, ['--silent'], { stdio: 'ignore', windowsHide: true, env });",
-      "child.on('exit', () => {",
-      '  let tries = 0;',
-      '  const timer = setInterval(() => {',
-      "    const target = path.join(dir, 'app-' + version);",
-      "    const exe = path.join(dir, 'AIland.exe');",
-      '    if (fs.existsSync(target)) {',
-      '      clearInterval(timer);',
-      '      setTimeout(() => {',
-      "        spawn(exe, [], { detached: true, stdio: 'ignore', windowsHide: true, env }).unref();",
-      '      }, 3000);',
-      '    } else if (++tries > 60) {',
-      '      clearInterval(timer);',
-      "      spawn(exe, [], { detached: true, stdio: 'ignore', windowsHide: true, env }).unref();",
-      '    }',
-      '  }, 1000);',
-      '});'
-    ].join('\n');
+      `$setup = '${psPath(currentFile)}'`,
+      `$dir = '${psPath(installDir)}'`,
+      `$version = '${psPath(state.version)}'`,
+      "Start-Process -FilePath $setup -ArgumentList '--silent' -Wait",
+      "$target = Join-Path $dir ('app-' + $version)",
+      '$tries = 0',
+      'while (-not (Test-Path $target) -and $tries -lt 240) { Start-Sleep -Milliseconds 500; $tries++ }',
+      'Start-Sleep -Seconds 5',
+      "Start-Process -FilePath (Join-Path $dir 'AIland.exe') -WorkingDirectory $dir"
+    ].join('; ');
 
     try {
-      const child = spawn(process.execPath, ['-e', helper], {
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true,
-        env: {
-          ...process.env,
-          ELECTRON_RUN_AS_NODE: '1',
-          AILAND_SETUP: currentFile,
-          AILAND_INSTALL_DIR: installDir,
-          AILAND_VERSION: state.version
-        }
-      });
+      const child = spawn(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-Command', helper],
+        { detached: true, stdio: 'ignore', windowsHide: true }
+      );
       child.unref();
     } catch (error) {
       patch({
