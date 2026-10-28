@@ -4,7 +4,7 @@ const { app, net, Notification, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { createHash } = require('node:crypto');
-const { spawn } = require('node:child_process');
+const { spawn, execFileSync } = require('node:child_process');
 
 const pkg = require('./package.json');
 
@@ -475,18 +475,44 @@ module.exports = function createUpdater(options) {
       process.env.LOCALAPPDATA || path.join(app.getPath('home'), 'AppData', 'Local'),
       'AIland'
     );
-    const helper = [
+    const relaunchScript = path.join(app.getPath('temp'), 'ailand-relaunch.ps1');
+    const relaunchLog = path.join(app.getPath('temp'), 'ailand-relaunch.log');
+    const relaunchBody = [
       `$dir = '${psPath(installDir)}'`,
       `$version = '${psPath(state.version)}'`,
-      `$log = Join-Path $dir 'update-helper.log'`,
-      "Set-Content $log 'waiting for update'",
+      `$log = '${psPath(relaunchLog)}'`,
+      "Set-Content $log ('[{0}] waiting for {1}' -f (Get-Date -Format o), $version)",
       `$target = Join-Path $dir ('app-' + $version)`,
       '$tries = 0',
       'while (-not (Test-Path $target) -and $tries -lt 240) { Start-Sleep -Milliseconds 500; $tries++ }',
       "Add-Content $log ('[{0}] target={1}' -f (Get-Date -Format o), (Test-Path $target))",
       'Start-Sleep -Seconds 5',
-      "try { Start-Process -FilePath (Join-Path $dir 'AIland.exe') -WorkingDirectory $dir; Add-Content $log ('[{0}] spawned' -f (Get-Date -Format o)) } catch { Add-Content $log ('[{0}] spawn error={1}' -f (Get-Date -Format o), $_) }"
-    ].join('; ');
+      "try { Start-Process -FilePath (Join-Path $dir 'AIland.exe') -WorkingDirectory $dir; Add-Content $log ('[{0}] started' -f (Get-Date -Format o)) } catch { Add-Content $log ('[{0}] error={1}' -f (Get-Date -Format o), $_) }"
+    ].join('\r\n');
+
+    try {
+      fs.writeFileSync(relaunchScript, relaunchBody, 'utf8');
+
+      const wmiScript = [
+        `$cmdLine = 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${psPath(relaunchScript)}"'`,
+        'Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $cmdLine } | Out-Null'
+      ].join('; ');
+      execFileSync(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', wmiScript],
+        { windowsHide: true, timeout: 20000 }
+      );
+    } catch (error) {
+      try {
+        spawn(
+          'powershell.exe',
+          ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', relaunchScript],
+          { detached: true, stdio: 'ignore', windowsHide: true }
+        ).unref();
+      } catch {
+        /* relaunch stays manual */
+      }
+    }
 
     try {
       const setupChild = spawn(currentFile, ['--silent'], {
@@ -495,13 +521,6 @@ module.exports = function createUpdater(options) {
         windowsHide: true
       });
       setupChild.unref();
-
-      const child = spawn(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-Command', helper],
-        { detached: true, stdio: 'ignore', windowsHide: true }
-      );
-      child.unref();
     } catch (error) {
       patch({
         status: 'error',
