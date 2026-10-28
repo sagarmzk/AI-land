@@ -107,7 +107,12 @@ const notes =
   `AIland ${version}.\n\n- Автообновление через GitHub Releases\n- Проверка обновлений в острове и трее`;
 
 run('git', ['add', 'package.json', 'package-lock.json', 'main.js', 'update.js', 'preload.js', '.gitignore', 'scripts', 'src', 'assets']);
-run('git', ['commit', '-m', `Release ${tag}`]);
+const staged = execFileSync('git', ['diff', '--cached', '--name-only'], { cwd: root, encoding: 'utf8' }).trim();
+if (staged) {
+  run('git', ['commit', '-m', `Release ${tag}`]);
+} else {
+  console.log('Изменений нет, коммит пропущен.');
+}
 run('git', ['tag', '-a', tag, '-m', `AIland ${version}`]);
 run('git', ['push', 'origin', 'HEAD', '--tags']);
 run(gh, [
