@@ -44,9 +44,6 @@ let latestMedia = { active: false };
 let latestArt = null;
 let lastArtSource = '';
 let latestNet = null;
-let latestCalendar = null;
-let calendarAt = 0;
-let calendarBusy = false;
 let bridgeProc = null;
 let bridgeRestartTimer = null;
 let mediaCmdPath = null;
@@ -310,56 +307,6 @@ function pushStats() {
   send('system:stats', payload);
 }
 
-/* ---------- calendar ---------- */
-
-function refreshCalendar() {
-  if (calendarBusy) return;
-  if (Date.now() - calendarAt < 5 * 60 * 1000) {
-    if (latestCalendar) send('calendar:state', latestCalendar);
-    return;
-  }
-  const script = path.join(ROOT, 'scripts', 'calendar.ps1');
-  if (!fs.existsSync(script)) return;
-  calendarBusy = true;
-  const proc = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script], {
-    windowsHide: true
-  });
-  proc.stdout.setEncoding('utf8');
-  let out = '';
-  const killer = setTimeout(() => {
-    try {
-      proc.kill();
-    } catch {
-      /* ignore */
-    }
-  }, 30000);
-  proc.stdout.on('data', (chunk) => {
-    out += chunk;
-  });
-  proc.on('error', () => {
-    latestCalendar = { available: false };
-  });
-  proc.on('close', () => {
-    clearTimeout(killer);
-    calendarBusy = false;
-    calendarAt = Date.now();
-    const lines = out
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter((l) => l.startsWith('{'));
-    if (!lines.length) {
-      latestCalendar = { available: false };
-    } else {
-      try {
-        latestCalendar = JSON.parse(lines[lines.length - 1]);
-      } catch {
-        latestCalendar = { available: false };
-      }
-    }
-    send('calendar:state', latestCalendar);
-  });
-}
-
 /* ---------- overlay window ---------- */
 
 function positionWindow() {
@@ -539,7 +486,6 @@ function registerIpc() {
   ipcMain.on('ui:ready', () => {
     send('media:state', latestMedia);
     if (latestArt) send('media:art', latestArt);
-    if (latestCalendar) send('calendar:state', latestCalendar);
     send('shelf:update', shelfPayload());
     send('tasks:update', store.tasks);
     if (updater) send('update:state', updater.getState());
@@ -656,11 +602,6 @@ function registerIpc() {
         body: label ? `Таймер завершён: ${label}` : 'Таймер завершён'
       }).show();
     }
-  });
-
-  ipcMain.on('calendar:request', () => {
-    if (latestCalendar) send('calendar:state', latestCalendar);
-    refreshCalendar();
   });
 
   ipcMain.handle('update:get', () => {

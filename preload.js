@@ -44,8 +44,6 @@ contextBridge.exposeInMainWorld('ai', {
   tasksClearDone: () => ipcRenderer.invoke('tasks:clearDone'),
 
   onStats: (callback) => on('system:stats', callback),
-  onCalendar: (callback) => on('calendar:state', callback),
-  requestCalendar: () => ipcRenderer.send('calendar:request'),
 
   meetingGet: () => ipcRenderer.invoke('meeting:get'),
   meetingSave: (meeting) => ipcRenderer.invoke('meeting:save', meeting),

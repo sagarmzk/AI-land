@@ -28,7 +28,6 @@ const state = {
   tasks: [],
   stats: null,
   cpuHistory: [],
-  calendar: null,
   update: {
     status: 'disabled',
     currentVersion: '',
@@ -211,7 +210,6 @@ function setView(view) {
     section.classList.toggle('is-active', section.dataset.view === view);
   });
   island.dataset.view = view;
-  if (view === 'timer' && api.requestCalendar) api.requestCalendar();
   if (view === 'system' && state.stats) renderStats();
 }
 
@@ -663,7 +661,7 @@ async function restoreTimer() {
   renderTimer();
 }
 
-/* ---------------- calendar ---------------- */
+/* ---------------- meeting ---------------- */
 
 function dayLabel(date) {
   const now = new Date();
@@ -675,7 +673,7 @@ function dayLabel(date) {
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
-function upcomingManual() {
+function upcomingMeeting() {
   const meeting = state.meeting;
   if (!meeting) return null;
   const start = new Date(meeting.start);
@@ -683,67 +681,25 @@ function upcomingManual() {
   const duration = Math.max(5, Number(meeting.duration) || 30);
   const end = new Date(start.getTime() + duration * 60000);
   if (end.getTime() <= Date.now()) return null;
-  return { subject: meeting.subject, start, end, location: '', allDay: false, manual: true };
+  return { subject: meeting.subject, start, end };
 }
 
 function renderMeeting() {
   const wrap = $('#meeting');
   const title = $('#meetingTitle');
   const meta = $('#meetingMeta');
-  const calendar = state.calendar;
-  const candidates = [];
-
-  if (calendar && calendar.available !== false && !calendar.none && calendar.subject) {
-    const start = new Date(calendar.start);
-    const end = new Date(calendar.end);
-    if (!Number.isNaN(start.getTime())) {
-      candidates.push({
-        subject: calendar.subject,
-        start,
-        end: Number.isNaN(end.getTime()) ? null : end,
-        location: calendar.location || '',
-        allDay: !!calendar.allDay,
-        manual: false
-      });
-    }
-  }
-
-  const manual = upcomingManual();
-  if (manual) candidates.push(manual);
-  candidates.sort((a, b) => a.start - b.start);
-  const next = candidates[0];
+  const next = upcomingMeeting();
 
   if (next) {
     wrap.classList.remove('is-off');
     title.textContent = next.subject;
-    if (next.allDay) {
-      meta.textContent = `${dayLabel(next.start)} · весь день`;
-    } else {
-      const range = next.end
-        ? `${fmtClockTime(next.start)}–${fmtClockTime(next.end)}`
-        : fmtClockTime(next.start);
-      const place = next.location ? ` · ${next.location}` : '';
-      meta.textContent = `${dayLabel(next.start)} · ${range}${place}${next.manual ? ' · вручную' : ''}`;
-    }
+    meta.textContent = `${dayLabel(next.start)} · ${fmtClockTime(next.start)}–${fmtClockTime(next.end)}`;
     return;
   }
 
   wrap.classList.add('is-off');
-  if (!calendar) {
-    title.textContent = 'Календарь не загружен';
-    meta.textContent = 'Добавьте встречу вручную';
-  } else if (calendar.available === false) {
-    title.textContent = 'Outlook не найден';
-    meta.textContent = 'Встречи можно добавить вручную';
-  } else {
-    title.textContent = 'Встреч впереди нет';
-    meta.textContent = 'Добавьте встречу вручную';
-  }
-}
-
-function renderCalendar(calendar) {
-  state.calendar = calendar;
-  renderMeeting();
+  title.textContent = 'Встреч впереди нет';
+  meta.textContent = 'Нажмите +, чтобы добавить встречу';
 }
 
 function toLocalInput(date) {
@@ -1299,15 +1255,8 @@ function seedTimer() {
 
   const start = new Date();
   start.setHours(16, 0, 0, 0);
-  const end = new Date(start.getTime() + 45 * 60000);
-  renderCalendar({
-    available: true,
-    subject: 'Дизайн-ревью AIland',
-    start: start.toISOString(),
-    end: end.toISOString(),
-    location: 'Zoom',
-    allDay: false
-  });
+  state.meeting = { subject: 'Дизайн-ревью AIland', start: start.toISOString(), duration: 45 };
+  renderMeeting();
 }
 
 function seedTasks() {
@@ -1403,7 +1352,7 @@ function init() {
   bindEvents();
   renderShelf([]);
   renderTasks([]);
-  renderCalendar(null);
+  renderMeeting();
   updatePlayIcon();
   updateProgress();
   restoreTimer();
@@ -1413,7 +1362,6 @@ function init() {
   if (api.onStats) api.onStats(applyStats);
   if (api.onShelf) api.onShelf(renderShelf);
   if (api.onTasks) api.onTasks(renderTasks);
-  if (api.onCalendar) api.onCalendar(renderCalendar);
   if (api.onUpdate) api.onUpdate(applyUpdate);
   if (api.onUpdateShow) api.onUpdateShow(openUpdatePanel);
   if (api.onToggle) {
@@ -1459,7 +1407,6 @@ function init() {
       .catch(() => {});
   }
 
-  if (api.requestCalendar) api.requestCalendar();
   if (api.ready) api.ready();
 
   setView('player');
