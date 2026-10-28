@@ -6,8 +6,8 @@
 
 **[⬇ Последняя версия (все файлы)](https://github.com/sagarmzk/AI-land/releases/latest)**
 
-- **Установщик:** [AIland-Setup-0.2.1.exe](https://github.com/sagarmzk/AI-land/releases/download/v0.2.1/AIland-Setup-0.2.1.exe)
-- **Портативная версия (zip, без установки):** [AIland-0.2.1-portable.zip](https://github.com/sagarmzk/AI-land/releases/download/v0.2.1/AIland-0.2.1-portable.zip)
+- **Установщик:** [AIland-Setup.exe](https://github.com/sagarmzk/AI-land/releases/latest/download/AIland-Setup.exe)
+- **Портативная версия (zip, без установки):** [AIland-portable.zip](https://github.com/sagarmzk/AI-land/releases/latest/download/AIland-portable.zip)
 
 Установщик ставит AIland в `%LOCALAPPDATA%\AIland`, добавляет ярлык и поддерживает автообновление. Портативную версию достаточно распаковать и запустить `AIland.exe`.
 
