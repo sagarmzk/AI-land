@@ -22,6 +22,33 @@ function Await($op, $resultType) {
 
 $manager = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
 
+function Select-Session {
+    try {
+        $current = $manager.GetCurrentSession()
+        $sessions = @($manager.GetSessions())
+        if ($sessions.Count -eq 0) { return $null }
+        $playing = @($sessions | Where-Object {
+            try { $_.GetPlaybackInfo().PlaybackStatus.ToString() -eq 'Playing' } catch { $false }
+        })
+        if ($playing.Count -gt 0) {
+            if ($null -ne $current -and $playing -contains $current) { return $current }
+            $best = $playing[0]
+            $bestAt = [datetimeoffset]::MinValue
+            foreach ($item in $playing) {
+                try {
+                    $at = $item.GetTimelineProperties().LastUpdatedTime
+                    if ($at -gt $bestAt) { $bestAt = $at; $best = $item }
+                } catch { }
+            }
+            return $best
+        }
+        if ($null -ne $current) { return $current }
+        return $sessions[0]
+    } catch {
+        return $null
+    }
+}
+
 function Get-ArtPath($session) {
     try {
         $props = Await ($session.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
@@ -52,7 +79,7 @@ function Get-ArtPath($session) {
 
 function Invoke-PlayerCommand($text) {
     try {
-        $session = $manager.GetCurrentSession()
+        $session = Select-Session
         if ($null -eq $session) { return }
         switch -Regex ($text) {
             '^toggle' { Await ($session.TryTogglePlayPauseAsync()) ([bool]) | Out-Null }
@@ -81,7 +108,7 @@ function Invoke-PlayerCommand($text) {
 
 function Emit-State {
     try {
-        $session = $manager.GetCurrentSession()
+        $session = Select-Session
         if ($null -eq $session) {
             return (@{ active = $false } | ConvertTo-Json -Compress)
         }

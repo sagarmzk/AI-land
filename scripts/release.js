@@ -83,10 +83,15 @@ run(process.execPath, [path.join(root, 'scripts', 'build-installer.js')]);
 const setupPath = path.join(root, 'release', 'installer', `AIland-Setup-${version}.exe`);
 const nupkgPath = path.join(root, 'release', 'installer', `AIland-${version}-full.nupkg`);
 const releasesPath = path.join(root, 'release', 'installer', 'RELEASES');
+const stableSetupPath = path.join(root, 'release', 'installer', 'AIland-Setup.exe');
+const stableZipPath = path.join(root, 'release', 'AIland-portable.zip');
 
 for (const file of [setupPath, nupkgPath, releasesPath, zipPath]) {
   if (!fs.existsSync(file)) fail(`Не найден артефакт: ${file}`);
 }
+
+fs.copyFileSync(setupPath, stableSetupPath);
+fs.copyFileSync(zipPath, stableZipPath);
 
 if (!publish) {
   console.log('\nСборка готова. Для публикации добавьте --publish.');
@@ -123,6 +128,8 @@ run(gh, [
   nupkgPath,
   releasesPath,
   zipPath,
+  stableSetupPath,
+  stableZipPath,
   '--title',
   `AIland ${version}`,
   '--notes',

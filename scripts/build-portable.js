@@ -55,8 +55,8 @@ if (fs.existsSync(path.join(outDir, 'electron.exe'))) {
 
 const appDir = path.join(outDir, 'resources', 'app');
 fs.mkdirSync(appDir, { recursive: true });
-for (const item of ['main.js', 'preload.js', 'update.js', 'package.json', 'src', 'assets']) {
-  fs.cpSync(path.join(root, item), path.join(appDir, item), { recursive: true });
+for (const item of ['main.js', 'preload.js', 'update.js', 'package.json', 'src', 'assets', 'scripts']) {
+  copyTree(path.join(root, item), path.join(appDir, item));
 }
 
 const fileVersion = `${pkg.version}.0`;
