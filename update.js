@@ -477,18 +477,23 @@ module.exports = function createUpdater(options) {
       "const path = require('node:path');",
       'const setup = process.env.AILAND_SETUP;',
       'const dir = process.env.AILAND_INSTALL_DIR;',
+      'const version = process.env.AILAND_VERSION;',
       'const env = { ...process.env };',
       'delete env.ELECTRON_RUN_AS_NODE;',
       "const child = spawn(setup, ['--silent'], { stdio: 'ignore', windowsHide: true, env });",
       "child.on('exit', () => {",
       '  let tries = 0;',
       '  const timer = setInterval(() => {',
+      "    const target = path.join(dir, 'app-' + version);",
       "    const exe = path.join(dir, 'AIland.exe');",
-      '    if (fs.existsSync(exe)) {',
+      '    if (fs.existsSync(target)) {',
       '      clearInterval(timer);',
-      "      spawn(exe, [], { detached: true, stdio: 'ignore', windowsHide: true, env }).unref();",
+      '      setTimeout(() => {',
+      "        spawn(exe, [], { detached: true, stdio: 'ignore', windowsHide: true, env }).unref();",
+      '      }, 3000);',
       '    } else if (++tries > 60) {',
       '      clearInterval(timer);',
+      "      spawn(exe, [], { detached: true, stdio: 'ignore', windowsHide: true, env }).unref();",
       '    }',
       '  }, 1000);',
       '});'
@@ -503,7 +508,8 @@ module.exports = function createUpdater(options) {
           ...process.env,
           ELECTRON_RUN_AS_NODE: '1',
           AILAND_SETUP: currentFile,
-          AILAND_INSTALL_DIR: installDir
+          AILAND_INSTALL_DIR: installDir,
+          AILAND_VERSION: state.version
         }
       });
       child.unref();
