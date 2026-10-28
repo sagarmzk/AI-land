@@ -485,9 +485,17 @@ module.exports = function createUpdater(options) {
       `$target = Join-Path $dir ('app-' + $version)`,
       '$tries = 0',
       'while (-not (Test-Path $target) -and $tries -lt 240) { Start-Sleep -Milliseconds 500; $tries++ }',
-      "Add-Content $log ('[{0}] target={1}' -f (Get-Date -Format o), (Test-Path $target))",
-      'Start-Sleep -Seconds 5',
-      "try { Start-Process -FilePath (Join-Path $dir 'AIland.exe') -WorkingDirectory $dir; Add-Content $log ('[{0}] started' -f (Get-Date -Format o)) } catch { Add-Content $log ('[{0}] error={1}' -f (Get-Date -Format o), $_) }"
+      '$tries = 0',
+      'while (((Get-Process -Name Update -ErrorAction SilentlyContinue) -or (Get-Process -Name \'AIland-Setup*\' -ErrorAction SilentlyContinue)) -and $tries -lt 240) { Start-Sleep -Seconds 1; $tries++ }',
+      "Add-Content $log ('[{0}] install settled' -f (Get-Date -Format o))",
+      'Start-Sleep -Seconds 2',
+      `$exe = Join-Path $dir 'AIland.exe'`,
+      'for ($i = 0; $i -lt 6; $i++) {',
+      "  Start-Process -FilePath $exe -WorkingDirectory $dir",
+      '  Start-Sleep -Seconds 4',
+      "  if (Get-Process -Name AIland -ErrorAction SilentlyContinue) { Add-Content $log ('[{0}] started' -f (Get-Date -Format o)); break }",
+      "  Add-Content $log ('[{0}] retry {1}' -f (Get-Date -Format o), $i)",
+      '}'
     ].join('\r\n');
 
     try {
