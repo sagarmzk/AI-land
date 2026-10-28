@@ -2,4 +2,5 @@ node_modules/
 release/
 dist/
 screenshots/
+assets/icon-[0-9]*.png
 *.log

@@ -827,7 +827,7 @@ function applyStats(stats) {
   if (hasBattery) {
     const fill = $('#batteryFill');
     fill.style.width = `${battery}%`;
-    fill.style.background = battery <= 20 ? '#ff6b8b' : 'var(--cyan)';
+    fill.style.background = battery <= 20 ? '#ffffff' : 'rgba(255,255,255,0.55)';
     $('#batteryText').textContent = `Батарея ${Math.round(battery)}%${stats.charging ? ' · зарядка' : ''}`;
   } else {
     $('#batteryFill').style.width = '0%';
@@ -836,45 +836,6 @@ function applyStats(stats) {
 }
 
 /* ---------------- shelf ---------------- */
-
-const ICON_STYLES = {
-  pdf: 'linear-gradient(145deg,#ff7a95,#8d1f3d)',
-  doc: 'linear-gradient(145deg,#6ea8ff,#274d9e)',
-  docx: 'linear-gradient(145deg,#6ea8ff,#274d9e)',
-  xls: 'linear-gradient(145deg,#5fe3a6,#1d7a4e)',
-  xlsx: 'linear-gradient(145deg,#5fe3a6,#1d7a4e)',
-  csv: 'linear-gradient(145deg,#5fe3a6,#1d7a4e)',
-  ppt: 'linear-gradient(145deg,#ffb26b,#a34d1a)',
-  pptx: 'linear-gradient(145deg,#ffb26b,#a34d1a)',
-  png: 'linear-gradient(145deg,#b79bff,#5b3aa8)',
-  jpg: 'linear-gradient(145deg,#b79bff,#5b3aa8)',
-  jpeg: 'linear-gradient(145deg,#b79bff,#5b3aa8)',
-  webp: 'linear-gradient(145deg,#b79bff,#5b3aa8)',
-  gif: 'linear-gradient(145deg,#b79bff,#5b3aa8)',
-  svg: 'linear-gradient(145deg,#b79bff,#5b3aa8)',
-  mp4: 'linear-gradient(145deg,#ff8ad8,#8a2f6e)',
-  mkv: 'linear-gradient(145deg,#ff8ad8,#8a2f6e)',
-  mov: 'linear-gradient(145deg,#ff8ad8,#8a2f6e)',
-  webm: 'linear-gradient(145deg,#ff8ad8,#8a2f6e)',
-  mp3: 'linear-gradient(145deg,#7ae7ff,#1f6e82)',
-  wav: 'linear-gradient(145deg,#7ae7ff,#1f6e82)',
-  flac: 'linear-gradient(145deg,#7ae7ff,#1f6e82)',
-  zip: 'linear-gradient(145deg,#f2c14e,#8a6414)',
-  rar: 'linear-gradient(145deg,#f2c14e,#8a6414)',
-  '7z': 'linear-gradient(145deg,#f2c14e,#8a6414)',
-  exe: 'linear-gradient(145deg,#9aa7c7,#39415a)',
-  msi: 'linear-gradient(145deg,#9aa7c7,#39415a)',
-  fig: 'linear-gradient(145deg,#ffa07a,#8a3520)',
-  psd: 'linear-gradient(145deg,#7db4ff,#1f4d8a)',
-  ai: 'linear-gradient(145deg,#ffc36b,#8a5a12)',
-  md: 'linear-gradient(145deg,#a8b6d8,#3a4763)',
-  txt: 'linear-gradient(145deg,#a8b6d8,#3a4763)',
-  json: 'linear-gradient(145deg,#a8b6d8,#3a4763)'
-};
-
-function iconStyle(ext) {
-  return ICON_STYLES[String(ext || '').toLowerCase()] || 'linear-gradient(145deg,#2a3550,#182036)';
-}
 
 function pluralFiles(count) {
   if (count === 0) return 'Пусто';
@@ -914,7 +875,7 @@ function renderShelf(files) {
     el.draggable = true;
     el.title = file.path || file.name || '';
     el.innerHTML = `
-      <div class="file-icon" style="background:${iconStyle(file.ext)}">${escapeHtml(file.ext || 'FILE')}</div>
+      <div class="file-icon">${escapeHtml(file.ext || 'FILE')}</div>
       <div class="file-body">
         <div class="file-name">${escapeHtml(file.name || 'Файл')}</div>
         <div class="file-size">${file.exists === false ? 'файл перемещён' : fmtBytes(file.size)}</div>
@@ -1136,11 +1097,11 @@ function bindEvents() {
 const DEMO_COVER = [
   '<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192">',
   '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">',
-  '<stop stop-color="#ff8ad8"/><stop offset="1" stop-color="#5b6cff"/>',
+  '<stop stop-color="#e8e8e5"/><stop offset="1" stop-color="#2a2a2a"/>',
   '</linearGradient></defs>',
   '<rect width="192" height="192" fill="url(#g)"/>',
   '<circle cx="58" cy="66" r="48" fill="rgba(255,255,255,0.18)"/>',
-  '<circle cx="146" cy="138" r="74" fill="rgba(9,11,18,0.35)"/>',
+  '<circle cx="146" cy="138" r="74" fill="rgba(0,0,0,0.35)"/>',
   '</svg>'
 ].join('');
 

@@ -32,8 +32,8 @@ function New-IconBitmap([int]$size) {
     $path = New-RoundedPath $rect (224 * $u)
     $bg = [System.Drawing.Drawing2D.LinearGradientBrush]::new(
         $rect,
-        [System.Drawing.Color]::FromArgb(255, 27, 34, 50),
-        [System.Drawing.Color]::FromArgb(255, 7, 9, 15),
+        [System.Drawing.Color]::FromArgb(255, 22, 22, 22),
+        [System.Drawing.Color]::FromArgb(255, 0, 0, 0),
         62.0
     )
     $g.FillPath($bg, $path)
@@ -47,8 +47,8 @@ function New-IconBitmap([int]$size) {
     $glowRadius = 430 * $u
     $glowPath.AddEllipse($cx - $glowRadius, $cy - $glowRadius, $glowRadius * 2, $glowRadius * 2)
     $glowBrush = [System.Drawing.Drawing2D.PathGradientBrush]::new($glowPath)
-    $glowBrush.CenterColor = [System.Drawing.Color]::FromArgb(58, 122, 160, 255)
-    $glowBrush.SurroundColors = @([System.Drawing.Color]::FromArgb(0, 122, 160, 255))
+    $glowBrush.CenterColor = [System.Drawing.Color]::FromArgb(34, 255, 255, 255)
+    $glowBrush.SurroundColors = @([System.Drawing.Color]::FromArgb(0, 255, 255, 255))
     $g.FillPath($glowBrush, $glowPath)
     $glowBrush.Dispose()
     $glowPath.Dispose()
@@ -57,8 +57,8 @@ function New-IconBitmap([int]$size) {
     $innerGlowRadius = 250 * $u
     $innerGlowPath.AddEllipse($cx - $innerGlowRadius, $cy - $innerGlowRadius, $innerGlowRadius * 2, $innerGlowRadius * 2)
     $innerGlowBrush = [System.Drawing.Drawing2D.PathGradientBrush]::new($innerGlowPath)
-    $innerGlowBrush.CenterColor = [System.Drawing.Color]::FromArgb(46, 167, 139, 250)
-    $innerGlowBrush.SurroundColors = @([System.Drawing.Color]::FromArgb(0, 167, 139, 250))
+    $innerGlowBrush.CenterColor = [System.Drawing.Color]::FromArgb(26, 255, 255, 255)
+    $innerGlowBrush.SurroundColors = @([System.Drawing.Color]::FromArgb(0, 255, 255, 255))
     $g.FillPath($innerGlowBrush, $innerGlowPath)
     $innerGlowBrush.Dispose()
     $innerGlowPath.Dispose()
@@ -68,39 +68,39 @@ function New-IconBitmap([int]$size) {
     $ringRect = [System.Drawing.RectangleF]::new(($cx - $outer), ($cy - $outer), ($outer * 2), ($outer * 2))
     $grad = [System.Drawing.Drawing2D.LinearGradientBrush]::new(
         $ringRect,
-        [System.Drawing.Color]::FromArgb(255, 122, 231, 255),
-        [System.Drawing.Color]::FromArgb(255, 255, 138, 216),
+        [System.Drawing.Color]::FromArgb(255, 255, 255, 255),
+        [System.Drawing.Color]::FromArgb(255, 122, 122, 119),
         35.0
     )
     $blend = [System.Drawing.Drawing2D.ColorBlend]::new(4)
     $blend.Colors = @(
-        [System.Drawing.Color]::FromArgb(255, 122, 231, 255),
-        [System.Drawing.Color]::FromArgb(255, 139, 165, 255),
-        [System.Drawing.Color]::FromArgb(255, 167, 139, 250),
-        [System.Drawing.Color]::FromArgb(255, 255, 138, 216)
+        [System.Drawing.Color]::FromArgb(255, 255, 255, 255),
+        [System.Drawing.Color]::FromArgb(255, 218, 218, 215),
+        [System.Drawing.Color]::FromArgb(255, 138, 138, 135),
+        [System.Drawing.Color]::FromArgb(255, 255, 255, 255)
     )
     $blend.Positions = @(0.0, 0.38, 0.68, 1.0)
     $grad.InterpolationColors = $blend
     $g.FillEllipse($grad, $ringRect)
     $grad.Dispose()
 
-    $holeBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(255, 9, 11, 17))
+    $holeBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(255, 5, 5, 5))
     $g.FillEllipse($holeBrush, $cx - $inner, $cy - $inner, $inner * 2, $inner * 2)
     $holeBrush.Dispose()
 
-    $holeEdge = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(80, 122, 231, 255), [Math]::Max(1, 3 * $u))
+    $holeEdge = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(70, 255, 255, 255), [Math]::Max(1, 3 * $u))
     $g.DrawEllipse($holeEdge, $cx - $inner, $cy - $inner, $inner * 2, $inner * 2)
     $holeEdge.Dispose()
 
     if ($size -ge 48) {
-        $spec = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(120, 255, 255, 255), [Math]::Max(1, 16 * $u))
+        $spec = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(150, 255, 255, 255), [Math]::Max(1, 16 * $u))
         $spec.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
         $spec.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
         $sr = 182 * $u
         $g.DrawArc($spec, $cx - $sr, $cy - $sr, $sr * 2, $sr * 2, 196, 54)
         $spec.Dispose()
 
-        $coreGlow = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(70, 167, 139, 250))
+        $coreGlow = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(40, 255, 255, 255))
         $g.FillEllipse($coreGlow, $cx - 46 * $u, $cy - 46 * $u, 92 * $u, 92 * $u)
         $coreGlow.Dispose()
     }
