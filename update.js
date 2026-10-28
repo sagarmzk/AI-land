@@ -476,18 +476,26 @@ module.exports = function createUpdater(options) {
       'AIland'
     );
     const helper = [
-      `$setup = '${psPath(currentFile)}'`,
       `$dir = '${psPath(installDir)}'`,
       `$version = '${psPath(state.version)}'`,
-      "Start-Process -FilePath $setup -ArgumentList '--silent' -Wait",
-      "$target = Join-Path $dir ('app-' + $version)",
+      `$log = Join-Path $dir 'update-helper.log'`,
+      "Set-Content $log 'waiting for update'",
+      `$target = Join-Path $dir ('app-' + $version)`,
       '$tries = 0',
       'while (-not (Test-Path $target) -and $tries -lt 240) { Start-Sleep -Milliseconds 500; $tries++ }',
+      "Add-Content $log ('[{0}] target={1}' -f (Get-Date -Format o), (Test-Path $target))",
       'Start-Sleep -Seconds 5',
-      "Start-Process -FilePath (Join-Path $dir 'AIland.exe') -WorkingDirectory $dir"
+      "try { Start-Process -FilePath (Join-Path $dir 'AIland.exe') -WorkingDirectory $dir; Add-Content $log ('[{0}] spawned' -f (Get-Date -Format o)) } catch { Add-Content $log ('[{0}] spawn error={1}' -f (Get-Date -Format o), $_) }"
     ].join('; ');
 
     try {
+      const setupChild = spawn(currentFile, ['--silent'], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+      setupChild.unref();
+
       const child = spawn(
         'powershell.exe',
         ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-Command', helper],
@@ -505,7 +513,7 @@ module.exports = function createUpdater(options) {
     setTimeout(() => {
       app.isQuitting = true;
       app.quit();
-    }, 700);
+    }, 1500);
   }
 
   function trayItems() {
