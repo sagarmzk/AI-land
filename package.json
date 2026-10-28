@@ -1,0 +1,54 @@
+{
+  "name": "ailand",
+  "productName": "AIland",
+  "version": "0.2.0",
+  "description": "AIland — плавающий остров-утилита для Windows: плеер, полка файлов, таймер и монитор системы.",
+  "main": "main.js",
+  "author": "AIland",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sagarmzk/AI-land.git"
+  },
+  "update": {
+    "repo": "sagarmzk/AI-land"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "capture": "electron . --capture",
+    "pack": "node scripts/build-portable.js",
+    "dist": "node scripts/build-installer.js",
+    "release": "node scripts/release.js"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.ailand.app",
+    "productName": "AIland",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*",
+      "scripts/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}

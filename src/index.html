@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'"
+    />
+    <title>AIland</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="stage">
+      <div id="island" class="island" data-view="player">
+        <div class="aura"></div>
+        <div class="shell">
+          <header class="bar" id="bar">
+            <div class="brand">
+              <span class="orb"><span class="orb-core"></span></span>
+              <div class="brand-block">
+                <span class="brand-name">AIland</span>
+                <span class="brand-status" id="statusText">Готов к работе</span>
+              </div>
+            </div>
+            <div class="bar-tail">
+              <button class="update-chip" id="updateChip" type="button" title="Доступно обновление" aria-label="Доступно обновление" hidden>
+                <span class="update-chip-dot"></span>
+                <span class="update-chip-text" id="updateChipText">Обновление</span>
+              </button>
+              <div class="eq" id="equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+              <span class="clock" id="clock">--:--</span>
+              <button class="ghost-btn" id="collapseBtn" title="Свернуть (Esc)" aria-label="Свернуть">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6" /></svg>
+              </button>
+            </div>
+          </header>
+
+          <nav class="tabs" role="tablist" aria-label="Разделы AIland">
+            <span class="tab-glider" id="tabGlider"></span>
+            <button class="tab is-active" data-tab="player" role="tab" aria-selected="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+              <span>Плеер</span>
+            </button>
+            <button class="tab" data-tab="shelf" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z" /><path d="m3 7.5 9 4.5 9-4.5" /><path d="M12 12v9" /></svg>
+              <span>Полка</span>
+            </button>
+            <button class="tab" data-tab="timer" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2.5" /><path d="M9 2h6" /></svg>
+              <span>Таймер</span>
+            </button>
+            <button class="tab" data-tab="system" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h4l2.5-7 4 12 2.5-5H21" /></svg>
+              <span>Система</span>
+            </button>
+          </nav>
+
+          <div class="views">
+            <section class="view view-player is-active" data-view="player" role="tabpanel">
+              <div class="now">
+                <div class="cover" id="cover">
+                  <img id="coverImg" alt="" />
+                  <div class="cover-fallback"><span class="orb big"><span class="orb-core"></span></span></div>
+                  <span class="cover-badge" id="sourceBadge"></span>
+                </div>
+                <div class="track">
+                  <div class="track-title" id="trackTitle">Ничего не играет</div>
+                  <div class="track-artist" id="trackArtist">Включите музыку — трек появится здесь</div>
+                  <div class="track-meta" id="trackMeta">SMTC · SYSTEM MEDIA</div>
+                </div>
+              </div>
+              <div class="progress-row">
+                <span class="time" id="timeNow">0:00</span>
+                <div class="progress" id="progress" role="slider" aria-label="Позиция трека" tabindex="0">
+                  <div class="progress-bg"></div>
+                  <div class="progress-fill" id="progressFill"></div>
+                  <div class="progress-knob" id="progressKnob"></div>
+                </div>
+                <span class="time" id="timeTotal">0:00</span>
+              </div>
+              <div class="controls">
+                <button class="ctrl" id="prevBtn" aria-label="Предыдущий трек">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5.7v12.6c0 .9-1 1.4-1.7.8L10 13.2V19H8V5h2v5.8l8.3-5.9c.7-.6 1.7-.1 1.7.8Z" /></svg>
+                </button>
+                <button class="ctrl play" id="playBtn" aria-label="Играть">
+                  <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.6v12.8c0 .9 1 1.5 1.8 1L19.6 13c.8-.5.8-1.5 0-2L9.8 4.6C9 4.1 8 4.7 8 5.6Z" /></svg>
+                  <svg class="ic-pause is-hidden" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="5" width="3.6" height="14" rx="1.2" /><rect x="13.4" y="5" width="3.6" height="14" rx="1.2" /></svg>
+                </button>
+                <button class="ctrl" id="nextBtn" aria-label="Следующий трек">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5.7v12.6c0 .9 1 1.4 1.7.8L14 13.2V19h2V5h-2v5.8L5.7 4.9C5 4.3 4 4.8 4 5.7Z" /></svg>
+                </button>
+              </div>
+              <div class="empty-note" id="playerNote">Работает с любым плеером Windows: Spotify, Chrome, Яндекс Музыка</div>
+            </section>
+
+            <section class="view view-shelf" data-view="shelf" role="tabpanel">
+              <div class="view-head">
+                <span class="view-title">Полка</span>
+                <span class="muted" id="shelfCount">Пусто</span>
+                <button class="text-btn" id="shelfClearBtn">Очистить</button>
+              </div>
+              <div class="shelf" id="shelf"></div>
+            </section>
+
+            <section class="view view-timer" data-view="timer" role="tabpanel">
+              <div class="timer-top">
+                <div class="ring-wrap">
+                  <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stop-color="#7ae7ff" />
+                        <stop offset="55%" stop-color="#a78bfa" />
+                        <stop offset="100%" stop-color="#ff8ad8" />
+                      </linearGradient>
+                    </defs>
+                    <circle class="ring-track" cx="60" cy="60" r="52" />
+                    <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="52" />
+                  </svg>
+                  <div class="ring-label">
+                    <span id="timerText">00:00</span>
+                    <small id="timerHint">выберите время</small>
+                  </div>
+                </div>
+                <div class="timer-side">
+                  <div class="presets" id="presets">
+                    <button data-min="5">5 мин</button>
+                    <button data-min="15">15 мин</button>
+                    <button data-min="25">25 мин</button>
+                    <button data-min="45">45 мин</button>
+                  </div>
+                  <div class="timer-actions">
+                    <button class="primary" id="timerToggle">Старт</button>
+                    <button class="ghost" id="timerReset">Сброс</button>
+                  </div>
+                  <div class="meeting" id="meeting" role="button" tabindex="0" title="Добавить встречу">
+                    <span class="meeting-dot"></span>
+                    <div class="meeting-body">
+                      <div class="meeting-title" id="meetingTitle">Встречи не загружены</div>
+                      <div class="meeting-meta" id="meetingMeta">Подключение к Outlook…</div>
+                    </div>
+                    <button class="meeting-add" id="meetingAdd" type="button" title="Добавить встречу" aria-label="Добавить встречу">+</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="meeting-editor" id="meetingEditor" hidden>
+                <div class="meeting-card">
+                  <div class="meeting-editor-head">Новая встреча</div>
+                  <input class="field" id="meetingSubject" type="text" maxlength="80" placeholder="Название" />
+                  <div class="meeting-editor-row">
+                    <input class="field" id="meetingStart" type="datetime-local" />
+                    <select class="field" id="meetingDuration">
+                      <option value="15">15 мин</option>
+                      <option value="30" selected>30 мин</option>
+                      <option value="45">45 мин</option>
+                      <option value="60">60 мин</option>
+                    </select>
+                  </div>
+                  <div class="meeting-editor-actions">
+                    <button class="primary" id="meetingSave" type="button">Сохранить</button>
+                    <button class="ghost" id="meetingCancel" type="button">Отмена</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="view view-system" data-view="system" role="tabpanel">
+              <div class="stats">
+                <div class="stat">
+                  <div class="stat-head"><span>Процессор</span><b id="cpuValue">0%</b></div>
+                  <svg class="spark" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true">
+                    <polyline id="cpuSpark" points="" />
+                  </svg>
+                </div>
+                <div class="stat">
+                  <div class="stat-head"><span>Память</span><b id="memValue">0 ГБ</b></div>
+                  <div class="meter"><i id="memBar"></i></div>
+                  <div class="stat-foot" id="memFoot">0 из 0 ГБ</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-head"><span>Сеть</span><b id="netValue">0 КБ/с</b></div>
+                  <div class="net-row"><span>↓ <b id="rxValue">0</b></span><span>↑ <b id="txValue">0</b></span></div>
+                  <div class="stat-foot" id="netFoot">загрузка канала</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-head"><span>Диск C:</span><b id="diskValue">—</b></div>
+                  <div class="meter"><i id="diskBar"></i></div>
+                  <div class="stat-foot" id="uptimeValue">—</div>
+                </div>
+              </div>
+              <div class="battery-row" id="batteryRow">
+                <span class="battery-icon"><i id="batteryFill"></i></span>
+                <span id="batteryText">Батарея не найдена</span>
+              </div>
+            </section>
+          </div>
+
+          <div class="meeting-editor update-editor" id="updateEditor" hidden>
+            <div class="meeting-card update-card">
+              <div class="update-head">
+                <span class="update-orb"></span>
+                <div class="update-title">
+                  <b>Обновление AIland</b>
+                  <span id="updateVersion">—</span>
+                </div>
+                <button class="panel-close" id="updateClose" type="button" aria-label="Закрыть">×</button>
+              </div>
+              <div class="update-notes" id="updateNotes"></div>
+              <div class="update-progress" id="updateProgressWrap" hidden><i id="updateProgressFill"></i></div>
+              <div class="update-meta" id="updateMeta"></div>
+              <div class="meeting-editor-actions update-actions">
+                <button class="primary" id="updateAction" type="button">Проверить обновления</button>
+                <button class="ghost" id="updateLater" type="button">Позже</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="drop-veil" id="dropVeil">
+            <span class="drop-ring"></span>
+            <b>Отпустите файлы</b>
+            <small>Они останутся на полке</small>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
