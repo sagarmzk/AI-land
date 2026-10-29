@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AIland" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>AIland</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/icon-180.png" />
+    <link rel="icon" href="icons/icon-192.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="stage" id="stage">
+      <div class="island" id="island" data-view="player">
+        <div class="shell">
+          <header class="bar" id="bar">
+            <div class="brand">
+              <span class="orb"><span class="orb-core"></span></span>
+              <div class="brand-block">
+                <span class="brand-name">AIland</span>
+                <span class="brand-status" id="statusText">Готов к работе</span>
+              </div>
+            </div>
+            <div class="bar-tail">
+              <div class="eq" id="equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+              <button class="chev" id="collapseBtn" type="button" aria-label="Свернуть">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6" /></svg>
+              </button>
+            </div>
+          </header>
+
+          <nav class="tabs" role="tablist" aria-label="Разделы AIland">
+            <span class="tab-glider" id="tabGlider"></span>
+            <button class="tab is-active" data-tab="player" role="tab" aria-selected="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+              <span>Плеер</span>
+            </button>
+            <button class="tab" data-tab="tasks" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4" /><path d="m8 12 3 3 5-6" /></svg>
+              <span>Задачи</span>
+            </button>
+            <button class="tab" data-tab="timer" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2.5" /><path d="M9 2h6" /></svg>
+              <span>Таймер</span>
+            </button>
+          </nav>
+
+          <div class="views">
+            <section class="view view-player is-active" data-view="player" role="tabpanel">
+              <div class="now">
+                <div class="cover" id="cover">
+                  <span class="cover-mono" id="coverMono">AI</span>
+                </div>
+                <div class="track">
+                  <div class="track-title" id="trackTitle">Ничего не играет</div>
+                  <div class="track-artist" id="trackArtist">Добавьте музыку с iPhone</div>
+                  <div class="track-meta" id="trackMeta">Локальные файлы · Media Session</div>
+                </div>
+              </div>
+
+              <div class="progress-row">
+                <span class="time" id="timeNow">0:00</span>
+                <input class="seek" id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Позиция трека" />
+                <span class="time" id="timeTotal">0:00</span>
+              </div>
+
+              <div class="controls">
+                <button class="ctrl" id="prevBtn" type="button" aria-label="Предыдущий трек">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5.7v12.6c0 .9-1 1.4-1.7.8L10 13.2V19H8V5h2v5.8l8.3-5.9c.7-.6 1.7-.1 1.7.8Z" /></svg>
+                </button>
+                <button class="ctrl play" id="playBtn" type="button" aria-label="Играть">
+                  <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.6v12.8c0 .9 1 1.5 1.8 1L19.6 13c.8-.5.8-1.5 0-2L9.8 4.6C9 4.1 8 4.7 8 5.6Z" /></svg>
+                  <svg class="ic-pause is-hidden" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="5" width="3.6" height="14" rx="1.2" /><rect x="13.4" y="5" width="3.6" height="14" rx="1.2" /></svg>
+                </button>
+                <button class="ctrl" id="nextBtn" type="button" aria-label="Следующий трек">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5.7v12.6c0 .9 1 1.4 1.7.8L14 13.2V19h2V5h-2v5.8L5.7 4.9C5 4.3 4 4.8 4 5.7Z" /></svg>
+                </button>
+              </div>
+
+              <button class="pick" id="pickBtn" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                <span>Добавить музыку</span>
+              </button>
+
+              <div class="playlist" id="playlist"></div>
+            </section>
+
+            <section class="view view-tasks" data-view="tasks" role="tabpanel">
+              <div class="task-progress">
+                <div class="task-progress-head">
+                  <span class="view-title">Задачи</span>
+                  <span class="task-count" id="taskCount">пусто</span>
+                  <button class="text-btn" id="tasksClearBtn" type="button" disabled>Очистить</button>
+                </div>
+                <div class="task-progress-row">
+                  <span class="task-pct" id="taskPct">0%</span>
+                  <div class="task-bar"><i id="taskFill"></i></div>
+                </div>
+              </div>
+
+              <div class="task-list" id="taskList"></div>
+
+              <form class="task-form" id="taskForm" autocomplete="off">
+                <input class="field" id="taskInput" type="text" maxlength="120" placeholder="Новая задача" enterkeyhint="done" />
+                <button class="task-submit" type="submit" aria-label="Добавить задачу">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                </button>
+              </form>
+            </section>
+
+            <section class="view view-timer" data-view="timer" role="tabpanel">
+              <div class="timer-ring-wrap">
+                <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stop-color="#ffffff" />
+                      <stop offset="55%" stop-color="#cfcfcc" />
+                      <stop offset="100%" stop-color="#6f6f6c" />
+                    </linearGradient>
+                  </defs>
+                  <circle class="ring-track" cx="60" cy="60" r="52" />
+                  <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="52" />
+                </svg>
+                <div class="ring-label">
+                  <span id="timerText">15:00</span>
+                  <small id="timerHint">нажмите старт</small>
+                </div>
+              </div>
+
+              <div class="presets" id="presets">
+                <button type="button" data-min="5">5 мин</button>
+                <button type="button" data-min="15" class="is-active">15 мин</button>
+                <button type="button" data-min="25">25 мин</button>
+                <button type="button" data-min="45">45 мин</button>
+              </div>
+
+              <div class="timer-actions">
+                <button class="primary" id="timerToggle" type="button">Старт</button>
+                <button class="ghost" id="timerReset" type="button">Сброс</button>
+              </div>
+
+              <div class="hint-line">Таймер продолжит идти, даже если свернуть AIland</div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <audio id="audio" preload="metadata" playsinline></audio>
+    <input id="fileInput" type="file" accept="audio/*,audio/mpeg,audio/mp4,audio/x-m4a,audio/wav" multiple hidden />
+    <script src="app.js"></script>
+  </body>
+</html>
